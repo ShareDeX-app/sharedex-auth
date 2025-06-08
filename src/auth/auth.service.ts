@@ -12,13 +12,26 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      throw new UnauthorizedException('Invalid credentials');
+  async validateUser(email: string, password: string): Promise<any> {
+    const user = await this.userRepo.findOneBy({ email });
+
+    if (user && (await bcrypt.compare(password, user.passwordHash))) {
+      console.log('Authenticated user:', user); // для отладки
+
+      const { passwordHash, ...result } = user;
+      return result;
     }
 
-    const payload = { sub: user.id, email: user.email };
+    throw new UnauthorizedException('Invalid credentials');
+  }
+
+  async login(user: any) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role, // ВАЖНО: чтобы был доступен в RolesGuard
+    };
+
     return {
       access_token: this.jwtService.sign(payload),
     };

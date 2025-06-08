@@ -1,24 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import dataSource from '../ormconfig';
 import { AuthModule } from './auth/auth.module';
-import { User } from './users/user.entity';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
+import { UsersModule } from './users/users.module'; // 👈 Добавь
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'sharedex_user',
-      password: 'secret',
-      database: 'sharedex_db',
-      entities: [User],
-      synchronize: true,
-    }),
+    TypeOrmModule.forRoot(dataSource.options),
     AuthModule,
+    UsersModule, // 👈 Подключи
   ],
 })
 export class AppModule {}
