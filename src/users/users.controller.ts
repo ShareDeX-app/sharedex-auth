@@ -6,7 +6,7 @@ import { User } from './user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from './role.enum'; // проверь правильность пути!
+import { UserRole } from './role.enum'; // проверь правильность пути!
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,7 +16,7 @@ export class UsersController {
   ) {}
 
   @Get()
-  @Roles(Role.Admin) // ✅ используем enum, не строку
+  @Roles(UserRole.ADMIN) // ✅ используем enum, не строку
   findAll(): Promise<User[]> {
     return this.userRepo.find();
   }

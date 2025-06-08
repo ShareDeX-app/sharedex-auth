@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 // 👇 если ты в src/common/guards/roles.guard.ts
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { Role } from '../../users/role.enum';
+import { UserRole } from '../../users/role.enum';
 
 
 
@@ -16,7 +16,7 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
@@ -25,7 +25,7 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     if (!user) throw new ForbiddenException('No user in request');
 
-    if (!requiredRoles.includes(user.role as Role)) {
+    if (!requiredRoles.includes(user.role as UserRole)) {
       throw new ForbiddenException('Access denied');
     }
 

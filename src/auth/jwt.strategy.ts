@@ -9,14 +9,14 @@ import { User } from '../users/user.entity';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    configService: ConfigService,
+    private readonly configService: ConfigService,
     @InjectRepository(User)
-    private readonly userRepo: Repository<User>, // ← 👈 важно: присвоили userRepo
+    private readonly userRepo: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'supersecret', // fallback на всякий
     });
   }
 
@@ -24,13 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userRepo.findOneBy({ id: payload.sub });
 
     if (!user) {
-      throw new UnauthorizedException(); // ← 👈 не забудь импорт сверху
+      throw new UnauthorizedException('Пользователь не найден или удалён');
     }
 
     return {
       id: user.id,
       email: user.email,
-      role: user.role, // 🔥 ОБЯЗАТЕЛЬНО ДЛЯ RolesGuard
+      role: user.role, // 🔥 обязательно для @RolesGuard
     };
   }
 }
