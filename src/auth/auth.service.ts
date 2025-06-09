@@ -1,11 +1,12 @@
-// src/auth/auth.service.ts
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User, UserRole } from '../users/user.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+
+import { User } from '../users/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UserRole } from '../users/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -16,11 +17,23 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (!user) throw new UnauthorizedException('Пользователь не найден');
+    const user = await this.userRepo.findOneBy({ email });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) throw new UnauthorizedException('Неверный пароль');
+    console.log('🔍 Найден пользователь:', user);
+
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    console.log('🔐 Введённый пароль:', password);
+    console.log('🧂 Хеш из БД:', user.password);
+    console.log('✅ Пароль валиден:', isPasswordValid);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
 
     return user;
   }
@@ -32,26 +45,33 @@ export class AuthService {
       role: user.role,
     };
 
+    const access_token = await this.jwtService.signAsync(payload);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
       role: user.role,
     };
   }
 
-  async register(dto: CreateUserDto, currentUser?: User): Promise<User> {
-    // Ограничение: только админ может создать админа
-    if (dto.role === UserRole.ADMIN && (!currentUser || currentUser.role !== UserRole.ADMIN)) {
-      throw new ForbiddenException('Только админ может назначить другого админа');
+  async register(dto: CreateUserDto, currentUser?: User) {
+    // Если передан текущий пользователь (admin) — проверим права
+    if (currentUser && currentUser.role !== UserRole.ADMIN) {
+      throw new UnauthorizedException('Only admins can register new users');
     }
 
-    const password = await bcrypt.hash(dto.password, 10);
+    const existing = await this.userRepo.findOneBy({ email: dto.email });
+    if (existing) {
+      throw new UnauthorizedException('User with this email already exists');
+    }
 
-    const user = this.userRepo.create({
-      email: dto.email.toLowerCase(),
-      password,
-      role: dto.role || UserRole.USER,
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const newUser = this.userRepo.create({
+      email: dto.email,
+      password: hashedPassword,
+      role: dto.role || UserRole.USER, // по умолчанию обычный пользователь
     });
 
-    return await this.userRepo.save(user);
+    return this.userRepo.save(newUser);
   }
 }
