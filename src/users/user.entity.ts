@@ -1,22 +1,28 @@
 // src/users/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
+export enum UserRole {
+  GUEST = 'guest',
+  USER = 'user',
+  ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
+}
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column()
   email: string;
 
   @Column()
-  passwordHash: string;
+  password: string;
 
-  @Column({ default: () => 'NOW()' })
-  createdAt: Date;
-
- // user.entity.ts
-@Column({ default: 'user' })
-role: string; // или enum Role
-
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
 }

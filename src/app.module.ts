@@ -10,7 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { User } from './users/user.entity'; // обязательно!
 
 @Module({
-  imports: [
+  imports: [ GuestModule, UserModule, AdminModule, SuperadminModule,
     ConfigModule.forRoot(), // для .env
     TypeOrmModule.forRoot({
       type: 'postgres',

@@ -2,7 +2,7 @@
 import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../users/user.entity';
+import { User, UserRole } from '../users/user.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -15,43 +15,43 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userRepo.findOneBy({ email });
+  async validateUser(email: string, password: string): Promise<User> {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) throw new UnauthorizedException('Пользователь не найден');
 
-    if (user && await bcrypt.compare(password, user.passwordHash)) {
-      const { passwordHash, ...result } = user;
-      return result;
-    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new UnauthorizedException('Неверный пароль');
 
-    throw new UnauthorizedException('Invalid credentials');
+    return user;
   }
 
   async login(user: User) {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role, // 👈 это обязательно
+      role: user.role,
     };
 
     return {
       access_token: this.jwtService.sign(payload),
+      role: user.role,
     };
   }
 
   async register(dto: CreateUserDto, currentUser?: User): Promise<User> {
-    // ⛔ Только админ может создать админа
-    if (dto.role === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
-      throw new ForbiddenException('Only admins can assign admin role');
+    // Ограничение: только админ может создать админа
+    if (dto.role === UserRole.ADMIN && (!currentUser || currentUser.role !== UserRole.ADMIN)) {
+      throw new ForbiddenException('Только админ может назначить другого админа');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const password = await bcrypt.hash(dto.password, 10);
 
     const user = this.userRepo.create({
-      email: dto.email,
-      passwordHash,
-      role: dto.role || 'user', // 🔒 fallback на "user"
+      email: dto.email.toLowerCase(),
+      password,
+      role: dto.role || UserRole.USER,
     });
 
-    return this.userRepo.save(user);
+    return await this.userRepo.save(user);
   }
 }

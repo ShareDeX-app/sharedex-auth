@@ -31,7 +31,7 @@ export class AuthController {
 
   @Post('register')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN) 
   async register(
     @Body() dto: CreateUserDto,
     @Req() req: RequestWithUser,
