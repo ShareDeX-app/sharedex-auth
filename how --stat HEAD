@@ -1,0 +1,99 @@
+[33mcommit 6f504516c2a3526deafa2aeca66fa3ad74b57ab0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Abulfaz Rajabov <sharedex.app@gmail.com>
+Date:   Mon Jun 9 20:48:48 2025 +0200
+
+    correction
+
+[1mdiff --git a/src/auth/auth.service.ts b/src/auth/auth.service.ts[m
+[1mindex e7aa958..cefa2ca 100644[m
+[1m--- a/src/auth/auth.service.ts[m
+[1m+++ b/src/auth/auth.service.ts[m
+[36m@@ -1,11 +1,12 @@[m
+[31m-// src/auth/auth.service.ts[m
+[31m-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';[m
+[32m+[m[32mimport { Injectable, UnauthorizedException } from '@nestjs/common';[m
+ import { InjectRepository } from '@nestjs/typeorm';[m
+ import { Repository } from 'typeorm';[m
+[31m-import { User, UserRole } from '../users/user.entity';[m
+ import * as bcrypt from 'bcrypt';[m
+ import { JwtService } from '@nestjs/jwt';[m
+[32m+[m
+[32m+[m[32mimport { User } from '../users/user.entity';[m
+ import { CreateUserDto } from './dto/create-user.dto';[m
+[32m+[m[32mimport { UserRole } from '../users/role.enum';[m
+ [m
+ @Injectable()[m
+ export class AuthService {[m
+[36m@@ -16,11 +17,23 @@[m [mexport class AuthService {[m
+   ) {}[m
+ [m
+   async validateUser(email: string, password: string): Promise<User> {[m
+[31m-    const user = await this.userRepo.findOne({ where: { email } });[m
+[31m-    if (!user) throw new UnauthorizedException('Пользователь не найден');[m
+[32m+[m[32m    const user = await this.userRepo.findOneBy({ email });[m
+[32m+[m
+[32m+[m[32m    console.log('🔍 Найден пользователь:', user);[m
+[32m+[m
+[32m+[m[32m    if (!user) {[m
+[32m+[m[32m      throw new UnauthorizedException('Пользователь не найден');[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const isPasswordValid = await bcrypt.compare(password, user.password);[m
+ [m
+[31m-    const isMatch = await bcrypt.compare(password, user.password);[m
+[31m-    if (!isMatch) throw new UnauthorizedException('Неверный пароль');[m
+[32m+[m[32m    console.log('🔐 Введённый пароль:', password);[m
+[32m+[m[32m    console.log('🧂 Хеш из БД:', user.password);[m
+[32m+[m[32m    console.log('✅ Пароль валиден:', isPasswordValid);[m
+[32m+[m
+[32m+[m[32m    if (!isPasswordValid) {[m
+[32m+[m[32m      throw new UnauthorizedException('Неверный пароль');[m
+[32m+[m[32m    }[m
+ [m
+     return user;[m
+   }[m
+[36m@@ -32,26 +45,33 @@[m [mexport class AuthService {[m
+       role: user.role,[m
+     };[m
+ [m
+[32m+[m[32m    const access_token = await this.jwtService.signAsync(payload);[m
+[32m+[m
+     return {[m
+[31m-      access_token: this.jwtService.sign(payload),[m
+[32m+[m[32m      access_token,[m
+       role: user.role,[m
+     };[m
+   }[m
+ [m
+[31m-  async register(dto: CreateUserDto, currentUser?: User): Promise<User> {[m
+[31m-    // Ограничение: только админ может создать админа[m
+[31m-    if (dto.role === UserRole.ADMIN && (!currentUser || currentUser.role !== UserRole.ADMIN)) {[m
+[31m-      throw new ForbiddenException('Только админ может назначить другого админа');[m
+[32m+[m[32m  async register(dto: CreateUserDto, currentUser?: User) {[m
+[32m+[m[32m    // Если передан текущий пользователь (admin) — проверим права[m
+[32m+[m[32m    if (currentUser && currentUser.role !== UserRole.ADMIN) {[m
+[32m+[m[32m      throw new UnauthorizedException('Only admins can register new users');[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const existing = await this.userRepo.findOneBy({ email: dto.email });[m
+[32m+[m[32m    if (existing) {[m
+[32m+[m[32m      throw new UnauthorizedException('User with this email already exists');[m
+     }[m
+ [m
+[31m-    const password = await bcrypt.hash(dto.password, 10);[m
+[32m+[m[32m    const hashedPassword = await bcrypt.hash(dto.password, 10);[m
+ [m
+[31m-    const user = this.userRepo.create({[m
+[31m-      email: dto.email.toLowerCase(),[m
+[31m-      password,[m
+[31m-      role: dto.role || UserRole.USER,[m
+[32m+[m[32m    const newUser = this.userRepo.create({[m
+[32m+[m[32m      email: dto.email,[m
+[32m+[m[32m      password: hashedPassword,[m
+[32m+[m[32m      role: dto.role || UserRole.USER, // по умолчанию обычный пользователь[m
+     });[m
+ [m
+[31m-    return await this.userRepo.save(user);[m
+[32m+[m[32m    return this.userRepo.save(newUser);[m
+   }[m
+ }[m

@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
   Get,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -44,7 +44,9 @@ export class AuthController {
     return this.authService.register(dto, currentUser);
   }
 
-  // Google OAuth
+
+  /*
+  // Google OAuth 
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleAuth(@Req() req) {
@@ -59,11 +61,10 @@ export class AuthController {
       message: 'Google login successful',
       user: req.user,
     };
-    
-  }
-  @Get('test')
-getTest() {
+    */
+@Get('test')
+public getTest() {
   return { message: 'auth controller is alive' };
 }
 
-}
+ }
